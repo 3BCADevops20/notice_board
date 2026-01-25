@@ -1,215 +1,246 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link,
-  useNavigate,
-  Navigate,
-} from "react-router-dom";
 import "./App.css";
 
-const ADMIN_CREDENTIALS = {
-  username: "admin",
-  password: "college@123",
-};
-
-function Header() {
-  return (
-    <header className="App-header">
-      <span role="img" aria-label="megaphone">📢</span>
-      <h1 className="App-header-title">Digital Notice Board</h1>
-    </header>
-  );
-}
-
-function Home() {
-  return (
-    <div className="section" style={{ textAlign: "center" }}>
-      <h2>Select Role</h2>
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 20 }}>
-        <Link to="/notices" className="btn-primary">Users</Link>
-        <Link to="/admin" className="btn-secondary">Admin</Link>
-      </div>
-    </div>
-  );
-}
-
-/* USERS: Read-only Notice Board */
-function NoticeList() {
-  const [notices, setNotices] = useState([]);
-
-  useEffect(() => {
-    axios.get("http://localhost:8080/api/notices")
-      .then(res => setNotices(res.data || []))
-      .catch(err => console.error("Error fetching notices:", err));
-  }, []);
-
-  return (
-    <div className="notice-section">
-      <h2>Notices</h2>
-      {notices.length === 0 ? (
-        <div className="empty">No notices yet.</div>
-      ) : (
-        <div className="notice-grid">
-          {notices.map((n) => (
-            <div key={n.id} className="notice-card">
-              <h3>{n.title}</h3>
-              <p><strong>Category:</strong> {n.category}</p>
-              <p>{n.description}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ADMIN LOGIN */
-function AdminLogin({ onLogin, isAuthed }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isAuthed) navigate("/admin/add");
-  }, [isAuthed, navigate]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      onLogin(true);
-      navigate("/admin/add");
-    } else {
-      setErr("Invalid username or password");
-    }
-  };
-
-  return (
-    <div className="section" style={{ maxWidth: 400, margin: "0 auto" }}>
-      <h2>Admin Login</h2>
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <input type="text" placeholder="Admin username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <input type="password" placeholder="Admin password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button type="submit" className="btn-primary">Login</button>
-      </form>
-    </div>
-  );
-}
-
-/* ADMIN PANEL: Add + Delete */
-function AdminAddNotice({ isAuthed, onLogout }) {
+function App() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
   const [notices, setNotices] = useState([]);
-  const navigate = useNavigate();
+  const [editId, setEditId] = useState(null);
 
-  // ✅ Always call hooks first
+  // Login state
+  const [role, setRole] = useState(null); // "ADMIN" or "USER"
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Fetch notices
   useEffect(() => {
-    if (isAuthed) {
-      fetchNotices();
-    }
-  }, [isAuthed]);
-
-  const fetchNotices = () => {
     axios.get("http://localhost:8080/api/notices")
-      .then(res => setNotices(res.data || []))
-      .catch(err => console.error("Error fetching notices:", err));
+      .then(response => setNotices(response.data))
+      .catch(error => console.error("Error fetching notices:", error));
+  }, []);
+
+  // Handle login
+  const handleLogin = () => {
+    if (username === "admin" && password === "admin") {
+      setRole("ADMIN");
+      setShowLoginForm(false);
+    } else if (username === "user" && password === "user") {
+      setRole("USER");
+      setShowLoginForm(false);
+    } else {
+      alert("Invalid credentials!");
+    }
   };
 
-  if (!isAuthed) return <Navigate to="/admin" replace />;
-
-  const handleAddNotice = () => {
-    if (!title.trim() || !category.trim() || !description.trim()) {
-      setStatus("❌ All fields are required!");
+  // Add or Update notice (only admin)
+  const handleSaveNotice = () => {
+    if (title.trim() === "" || category.trim() === "" || description.trim() === "") {
+      alert("All fields are required!");
       return;
     }
 
-    const newNotice = { title, category, description };
+    const noticeData = { title, category, description };
 
-    axios.post("http://localhost:8080/api/notices", newNotice)
-      .then(() => {
-        setStatus("✅ Notice added successfully.");
-        setTitle(""); setCategory(""); setDescription("");
-        fetchNotices();
-      })
-      .catch(err => {
-        console.error("Error adding notice:", err);
-        setStatus("⚠️ Added locally. Backend did not confirm.");
-      });
+    if (editId) {
+      axios.put(`http://localhost:8080/api/notices/${editId}`, noticeData)
+        .then(response => {
+          setNotices(notices.map(n => n.id === editId ? response.data : n));
+          resetForm();
+        })
+        .catch(error => console.error("Error updating notice:", error));
+    } else {
+      axios.post("http://localhost:8080/api/notices", noticeData)
+        .then(response => {
+          setNotices([...notices, response.data]);
+          resetForm();
+        })
+        .catch(error => console.error("Error adding notice:", error));
+    }
   };
 
+  // Delete notice (only admin)
   const handleDelete = (id) => {
     axios.delete(`http://localhost:8080/api/notices/${id}`)
-      .then(() => {
-        setNotices(notices.filter(n => n.id !== id));
-      })
-      .catch(err => console.error("Error deleting notice:", err));
+      .then(() => setNotices(notices.filter(n => n.id !== id)))
+      .catch(error => console.error("Error deleting notice:", error));
   };
 
-  const handleExit = () => {
-    onLogout();
-    navigate("/");
+  // Edit notice (only admin)
+  const handleEdit = (notice) => {
+    setTitle(notice.title);
+    setCategory(notice.category);
+    setDescription(notice.description);
+    setEditId(notice.id);
   };
 
-  return (
-    <div className="form-section">
-      <h2>Admin Panel</h2>
-      {status && <p style={{ fontWeight: "bold", color: status.includes("✅") ? "green" : "orange" }}>{status}</p>}
+  const resetForm = () => {
+    setTitle("");
+    setCategory("");
+    setDescription("");
+    setEditId(null);
+  };
 
-      {/* Add Notice Form */}
-      <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <input type="text" placeholder="Category" value={category} onChange={(e) => setCategory(e.target.value)} />
-      <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-      <div className="btn-row">
-        <button className="btn-primary" onClick={handleAddNotice}>Add Notice</button>
-        <button className="btn-secondary" onClick={handleExit}>Exit</button>
+  // Logout handler
+  const handleLogout = () => {
+    setRole(null);
+    setUsername("");
+    setPassword("");
+    setShowLoginForm(false);
+    resetForm();
+  };
+
+  // Landing page → choose role
+  if (!role && !showLoginForm) {
+    return (
+      <div className="landing">
+        <h1>📢 Digital Notice Board</h1>
+        <p>Choose your role to continue</p>
+        <div className="landing-buttons">
+          <button onClick={() => setRole("USER")}>👤 View as User</button>
+          <button onClick={() => setShowLoginForm(true)}>👨‍💼 Admin Login</button>
+        </div>
       </div>
+    );
+  }
 
-      {/* Admin Notice List with Delete */}
-      <div className="notice-section" style={{ marginTop: "24px" }}>
-        <h2>Manage Notices</h2>
+  // Admin login form
+  if (showLoginForm && !role) {
+    return (
+      <div className="login-section">
+        <h2>🔐 Admin Login</h2>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <div style={{ position: 'relative', marginBottom: '16px' }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ 
+              width: '100%',
+              paddingRight: '45px',
+              padding: '14px 45px 14px 16px',
+              border: '1.5px solid var(--border)',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontFamily: 'inherit',
+              color: 'var(--text-primary)',
+              background: 'var(--bg-tertiary)',
+              transition: 'all 0.3s ease',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--primary)';
+              e.target.style.background = 'var(--bg-primary)';
+              e.target.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.background = 'var(--bg-tertiary)';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: 'absolute',
+              right: '14px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '18px',
+              padding: '0',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
+        <button onClick={handleLogin}>Login</button>
+        <button onClick={() => setShowLoginForm(false)}>Back</button>
+      </div>
+    );
+  }
+
+  // Main app
+  return (
+    <div className="App">
+      <header className="App-header">
+        <div className="App-header-title">📢 Digital Notice Board</div>
+        <div className="App-header-role">
+          {role === "ADMIN" ? "👨‍💼 ADMIN" : "👤 USER"}
+          <button onClick={handleLogout}>Home</button>
+        </div>
+      </header>
+
+      {role === "ADMIN" && (
+        <div className="form-section">
+          <h2>{editId ? "✏️ Edit Notice" : "➕ Create New Notice"}</h2>
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+          <textarea
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <div className="btn-row">
+            {editId && <button onClick={resetForm}>Cancel</button>}
+            <button onClick={handleSaveNotice}>
+              {editId ? "Update Notice" : "Add Notice"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="notice-section">
+        <h2>📋 All Notices {role === "USER" && "(Read Only)"}</h2>
         {notices.length === 0 ? (
-          <div className="empty">No notices yet.</div>
+          <p>📭 No notices yet.</p>
         ) : (
           <div className="notice-grid">
-            {notices.map((n) => (
-              <div key={n.id} className="notice-card">
-                <h3>{n.title}</h3>
-                <p><strong>Category:</strong> {n.category}</p>
-                <p>{n.description}</p>
-                <button className="btn-secondary" onClick={() => handleDelete(n.id)}>Delete</button>
+            {notices.map((notice) => (
+              <div key={notice.id} className="notice-card">
+                <h3>{notice.title}</h3>
+                <div className="category">{notice.category}</div>
+                <p>{notice.description}</p>
+                {role === "ADMIN" && (
+                  <div className="button-group">
+                    <button onClick={() => handleEdit(notice)}>✏️ Edit</button>
+                    <button onClick={() => handleDelete(notice.id)}>🗑️ Delete</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function App() {
-  const [isAuthed, setIsAuthed] = useState(false);
-  const handleLogout = () => setIsAuthed(false);
-
-  return (
-    <Router>
-      <div className="App">
-        <Header />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/notices" element={<NoticeList />} />
-          <Route path="/admin" element={<AdminLogin onLogin={setIsAuthed} isAuthed={isAuthed} />} />
-          <Route path="/admin/add" element={<AdminAddNotice isAuthed={isAuthed} onLogout={handleLogout} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </Router>
   );
 }
 
