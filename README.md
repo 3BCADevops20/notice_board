@@ -16,6 +16,7 @@ Then open the frontend URL
 If the Demo service is not running, notice data may not load.
 📊 Project Presentation
 👉 Download Project PPT
+https://github.com/3BCADevops20/notice_board/blob/main/Notice_Board_System.pptx
 🛠️ Tech Stack
 React
 Axios
