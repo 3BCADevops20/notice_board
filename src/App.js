@@ -2,8 +2,15 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 
-// ✅ Render API base URL
-const API_URL = "https://notice-board20.onrender.com/api/notices";
+// ✅ Render API base URLs
+const PRIMARY_API_URL = "https://noticeboard-backend-app-fchbfxcaguh5hnb0.southeastasia-01.azurewebsites.net/api/notices";
+const FALLBACK_API_URL = "https://notice-board20.onrender.com/api/notices";
+
+// Helper functions for API calls with fallback
+const apiGet = (endpoint) => axios.get(PRIMARY_API_URL + endpoint).catch(() => axios.get(FALLBACK_API_URL + endpoint));
+const apiPost = (endpoint, data) => axios.post(PRIMARY_API_URL + endpoint, data).catch(() => axios.post(FALLBACK_API_URL + endpoint, data));
+const apiPut = (endpoint, data) => axios.put(PRIMARY_API_URL + endpoint, data).catch(() => axios.put(FALLBACK_API_URL + endpoint, data));
+const apiDelete = (endpoint) => axios.delete(PRIMARY_API_URL + endpoint).catch(() => axios.delete(FALLBACK_API_URL + endpoint));
 
 function App() {
   const [title, setTitle] = useState("");
@@ -21,8 +28,7 @@ function App() {
 
   // 🔹 Fetch notices
   useEffect(() => {
-    axios
-      .get(API_URL)
+    apiGet('')
       .then((response) => setNotices(response.data))
       .catch((error) => console.error("Error fetching notices:", error));
   }, []);
@@ -50,16 +56,14 @@ function App() {
     const noticeData = { title, category, description };
 
     if (editId) {
-      axios
-        .put(`${API_URL}/${editId}`, noticeData)
+      apiPut(`/${editId}`, noticeData)
         .then((response) => {
           setNotices(notices.map((n) => (n.id === editId ? response.data : n)));
           resetForm();
         })
         .catch((error) => console.error("Error updating notice:", error));
     } else {
-      axios
-        .post(API_URL, noticeData)
+      apiPost('', noticeData)
         .then((response) => {
           setNotices([...notices, response.data]);
           resetForm();
@@ -70,8 +74,7 @@ function App() {
 
   // 🔹 Delete notice (ADMIN only)
   const handleDelete = (id) => {
-    axios
-      .delete(`${API_URL}/${id}`)
+    apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
       .catch((error) => console.error("Error deleting notice:", error));
   };
