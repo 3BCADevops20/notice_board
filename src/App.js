@@ -77,7 +77,7 @@ function App() {
   const handleDelete = (id) => {
   const password = prompt("Enter password to delete:");
 
-  if (password === "2005") {
+  if (password === "2006") {
     apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
       .catch((error) => console.error("Error deleting notice:", error));
@@ -92,7 +92,7 @@ function App() {
   const handleEdit = (notice) => {
   const enteredPassword = prompt("Enter admin password to edit:");
 
-  if (enteredPassword === "admin") {
+  if (enteredPassword === "sridhar@123") {
     setTitle(notice.title);
     setCategory(notice.category);
     setDescription(notice.description);
