@@ -75,20 +75,32 @@ function App() {
   // 🔹 Delete notice (ADMIN only)
   
   const handleDelete = (id) => {
+  const password = prompt("Enter password to delete:");
+
+  if (password === "2005") {
     apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
-      .catch((error) => console.error("Error deleting notice:", error)); 
-  };
+      .catch((error) => console.error("Error deleting notice:", error));
+  } else {
+    alert("Wrong password! Delete cancelled.");
+  }
+};
 
 
 
   // 🔹 Edit notice
   const handleEdit = (notice) => {
+  const enteredPassword = prompt("Enter admin password to edit:");
+
+  if (enteredPassword === "admin") {
     setTitle(notice.title);
     setCategory(notice.category);
     setDescription(notice.description);
     setEditId(notice.id);
-  };
+  } else {
+    alert("Wrong password! You cannot edit.");
+  }
+};
 
   const resetForm = () => {
     setTitle("");
