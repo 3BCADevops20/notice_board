@@ -77,7 +77,7 @@ function App() {
   cconst handleDelete = (id) => {
     apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
-      .catch((error) => console.error("Error deleting notice:", error));
+      .catch((error) => console.error("Error deleting notice:", error)); 
   };
 
 
