@@ -75,10 +75,16 @@ function App() {
   // 🔹 Delete notice (ADMIN only)
   
   const handleDelete = (id) => {
+  const password = prompt("Enter password to delete:");
+
+  if (password === "2006") {
     apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
       .catch((error) => console.error("Error deleting notice:", error));
-  };
+  } else {
+    alert("Wrong password! Delete cancelled.");
+  }
+};
 
 
   // 🔹 Edit notice
