@@ -74,7 +74,7 @@ function App() {
 
   // 🔹 Delete notice (ADMIN only)
   
-  cconst handleDelete = (id) => {
+  const handleDelete = (id) => {
     apiDelete(`/${id}`)
       .then(() => setNotices(notices.filter((n) => n.id !== id)))
       .catch((error) => console.error("Error deleting notice:", error)); 
